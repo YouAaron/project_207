@@ -104,7 +104,7 @@ async function downloadGame() {
   if (!data.session) return requireLogin("download");
 
   // 실제 ZIP 다운로드 주소로 교체하세요.
-  const downloadUrl = "PASTE_YOUR_GAME_ZIP_DOWNLOAD_URL_HERE";
+  const downloadUrl = "https://github.com/YouAaron/project_207_game/releases/download/v1.0/FPSGAME207.zip";
   if (downloadUrl.includes("PASTE_YOUR_GAME")) {
     alert("로그인은 완료되었습니다. script.js의 downloadUrl에 실제 게임 ZIP 다운로드 링크를 넣어 주세요.");
     return;
