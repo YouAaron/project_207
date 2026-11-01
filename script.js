@@ -1,23 +1,55 @@
-// Supabase 프로젝트를 만든 뒤 아래 두 값을 본인의 프로젝트 값으로 교체하세요.
-// 공개용 anon/publishable key만 사용하세요. service_role/secret key는 절대 웹사이트에 넣지 마세요.
-import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
 
-const SUPABASE_URL = "https://nmlskhsnravjbugudttu.supabase.co";
-const SUPABASE_ANON_KEY = "sb_publishable_-UFrRu--FWlEm73T4sYz2A_QPuLjgl8";
-const supabaseConfigured =
-  !SUPABASE_URL.includes("YOUR_PROJECT_ID") &&
-  !SUPABASE_ANON_KEY.includes("YOUR_SUPABASE");
+import { createClient } from
+  "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
 
-const supabase = supabaseConfigured
-  ? createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
-  : null;
+
+// ========================================
+// SUPABASE 설정
+// ========================================
+
+const SUPABASE_URL =
+  "https://nmlskhsnravjbugudttu.supabase.co";
+
+const SUPABASE_ANON_KEY =
+  "sb_publishable_-UFrRu--FWlEm73T4sYz2A_QPuLjgl8";
+
+const supabase = createClient(
+  SUPABASE_URL,
+  SUPABASE_ANON_KEY
+);
+
+
+// ========================================
+// 다운로드 주소 설정
+// ========================================
+
+// 실제 게임 ZIP 파일의 GitHub Release 주소
+const GAME_DOWNLOAD_URL =
+  "https://github.com/YouAaron/project_207_game/releases/download/v1.0/FPSGAME207.zip";
+
+// 런처 EXE를 배포한 GitHub Release 주소로 교체해야 함
+const LAUNCHER_DOWNLOAD_URL =
+  "PASTE_YOUR_LAUNCHER_DOWNLOAD_URL_HERE";
+
+
+// ========================================
+// 기본 설정
+// ========================================
 
 const $ = (id) => document.getElementById(id);
+
 let authMode = "login";
 let pendingAction = null;
+let launchTimer = null;
+
+
+// ========================================
+// 로그인 창
+// ========================================
 
 function setAuthMessage(message = "", type = "") {
   const element = $("authMessage");
+
   element.textContent = message;
   element.className = `auth-message ${type}`.trim();
 }
@@ -25,9 +57,12 @@ function setAuthMessage(message = "", type = "") {
 function openAuth(mode = "login", action = null) {
   authMode = mode;
   pendingAction = action;
+
   $("authOverlay").classList.remove("hidden");
+
   setAuthMessage();
   updateAuthMode();
+
   $("emailInput").focus();
 }
 
@@ -38,167 +73,426 @@ function closeAuth() {
 
 function updateAuthMode() {
   const signup = authMode === "signup";
-  $("authTitle").textContent = signup ? "회원가입" : "로그인";
-  $("authSubtitle").textContent = signup
-    ? "계정을 만들고 게임 웹사이트를 이용하세요."
-    : "계정에 로그인하고 전장에 참여하세요.";
-  $("authSubmitBtn").textContent = signup ? "회원가입" : "로그인";
+
+  $("authTitle").textContent =
+    signup ? "회원가입" : "로그인";
+
+  $("authSubtitle").textContent =
+    signup
+      ? "계정을 만들고 게임을 시작하세요."
+      : "계정에 로그인하고 전장에 참여하세요.";
+
+  $("authSubmitBtn").textContent =
+    signup ? "회원가입" : "로그인";
+
   $("showLoginTab").classList.toggle("active", !signup);
   $("showSignupTab").classList.toggle("active", signup);
+
   $("usernameInput").classList.toggle("hidden", !signup);
   $("usernameLabel").classList.toggle("hidden", !signup);
+
   $("usernameInput").required = signup;
-  $("passwordInput").autocomplete = signup ? "new-password" : "current-password";
-  $("passwordHint").textContent = signup
-    ? "비밀번호는 8자 이상을 권장합니다."
-    : "가입할 때 사용한 비밀번호를 입력하세요.";
+
+  $("passwordInput").autocomplete =
+    signup ? "new-password" : "current-password";
+
+  $("passwordHint").textContent =
+    signup
+      ? "비밀번호는 8자 이상 입력해 주세요."
+      : "가입할 때 사용한 비밀번호를 입력하세요.";
 }
+
+
+// ========================================
+// 로그인 상태 표시
+// ========================================
 
 function showSignedInUser(user) {
   const email = user?.email ?? "";
-  const displayName = user?.user_metadata?.display_name || email;
-  $("userBadge").textContent = `로그인: ${displayName}`;
+
+  const displayName =
+    user?.user_metadata?.display_name || email;
+
+  $("userBadge").textContent =
+    `로그인: ${displayName}`;
+
   $("userBadge").title = email;
+
   $("userBadge").classList.remove("hidden");
   $("loginOpenBtn").classList.add("hidden");
   $("logoutBtn").classList.remove("hidden");
+
   $("loginNotice").classList.add("hidden");
 }
 
 function showSignedOutUser() {
   $("userBadge").classList.add("hidden");
+
   $("loginOpenBtn").classList.remove("hidden");
   $("logoutBtn").classList.add("hidden");
+
   $("loginNotice").classList.remove("hidden");
 }
 
-function requireLogin(action) {
-  if (!supabase) {
-    openAuth("login", action);
-    setAuthMessage("로그인 기능을 활성화하려면 script.js에 Supabase 프로젝트 URL과 공개 키를 먼저 설정해야 합니다.", "error");
+
+// ========================================
+// 로그인 확인
+// ========================================
+
+async function requireLogin(action) {
+  const { data, error } =
+    await supabase.auth.getSession();
+
+  if (error) {
+    alert("로그인 상태를 확인하지 못했습니다.");
     return false;
   }
-  openAuth("login", action);
-  setAuthMessage("이 기능을 이용하려면 먼저 로그인해 주세요.");
-  return false;
+
+  if (!data.session) {
+    openAuth("login", action);
+
+    setAuthMessage(
+      "이 기능을 이용하려면 먼저 로그인해 주세요."
+    );
+
+    return false;
+  }
+
+  return true;
 }
 
-async function runPendingAction() {
-  const action = pendingAction;
-  pendingAction = null;
-  closeAuth();
-  if (action === "start") startGame();
-  if (action === "download") downloadGame();
-}
+
+// ========================================
+// 게임 실행
+// ========================================
 
 async function startGame() {
-  if (!supabase) return requireLogin("start");
-  const { data } = await supabase.auth.getSession();
-  if (!data.session) return requireLogin("start");
-  alert("로그인되었습니다. 게임 실행은 별도 Windows 런처가 연결된 뒤 사용할 수 있습니다.");
+  const loggedIn = await requireLogin("start");
+
+  if (!loggedIn) return;
+
+  $("launchStatus").classList.remove("hidden");
+  $("launcherHelp").classList.add("hidden");
+
+  $("launchStatus").textContent =
+    "런처 실행을 요청하고 있습니다...";
+
+  // Windows 런처 사용자 지정 프로토콜 호출
+  try {
+    window.location.href = "fpsgame://start";
+  } catch (error) {
+    console.error(error);
+  }
+
+  // 런처가 설치되지 않았거나 실행되지 않는 경우 안내
+  clearTimeout(launchTimer);
+
+  launchTimer = setTimeout(() => {
+    $("launchStatus").textContent =
+      "런처가 실행되지 않았을 수 있습니다.";
+
+    $("launcherHelp").classList.remove("hidden");
+  }, 2000);
 }
+
+
+// ========================================
+// 게임 다운로드
+// ========================================
 
 async function downloadGame() {
-  if (!supabase) return requireLogin("download");
-  const { data } = await supabase.auth.getSession();
-  if (!data.session) return requireLogin("download");
+  const loggedIn = await requireLogin("download");
 
-  // 실제 ZIP 다운로드 주소로 교체하세요.
-  const downloadUrl = "https://github.com/YouAaron/project_207_game/releases/download/v1.0/FPSGAME207.zip";
-  if (downloadUrl.includes("PASTE_YOUR_GAME")) {
-    alert("로그인은 완료되었습니다. script.js의 downloadUrl에 실제 게임 ZIP 다운로드 링크를 넣어 주세요.");
+  if (!loggedIn) return;
+
+  if (
+    !GAME_DOWNLOAD_URL ||
+    GAME_DOWNLOAD_URL.includes("PASTE_YOUR")
+  ) {
+    alert("실제 게임 다운로드 주소를 설정해 주세요.");
     return;
   }
-  window.location.href = downloadUrl;
+
+  window.location.href = GAME_DOWNLOAD_URL;
 }
+
+
+// ========================================
+// 런처 다운로드
+// ========================================
+
+async function downloadLauncher() {
+  const loggedIn = await requireLogin("launcher");
+
+  if (!loggedIn) return;
+
+  if (
+    !LAUNCHER_DOWNLOAD_URL ||
+    LAUNCHER_DOWNLOAD_URL.includes("PASTE_YOUR")
+  ) {
+    alert(
+      "아직 런처 다운로드 주소가 설정되지 않았습니다.\n\n" +
+      "런처 EXE를 GitHub Releases에 업로드한 뒤\n" +
+      "script.js의 LAUNCHER_DOWNLOAD_URL을 변경해 주세요."
+    );
+
+    return;
+  }
+
+  window.location.href = LAUNCHER_DOWNLOAD_URL;
+}
+
+
+// ========================================
+// 게임 정보
+// ========================================
 
 function showInfo() {
   $("information").classList.toggle("hidden");
 }
 
+
+// ========================================
+// 로그인 상태 복구
+// ========================================
+
 async function refreshSession() {
-  if (!supabase) {
+  const {
+    data: { session },
+    error
+  } = await supabase.auth.getSession();
+
+  if (error || !session) {
     showSignedOutUser();
     return;
   }
-  const { data: { session } } = await supabase.auth.getSession();
-  if (session?.user) showSignedInUser(session.user);
-  else showSignedOutUser();
+
+  showSignedInUser(session.user);
 }
 
-$("loginOpenBtn").addEventListener("click", () => openAuth("login"));
-$("showLoginTab").addEventListener("click", () => { authMode = "login"; updateAuthMode(); setAuthMessage(); });
-$("showSignupTab").addEventListener("click", () => { authMode = "signup"; updateAuthMode(); setAuthMessage(); });
-$("authCloseBtn").addEventListener("click", closeAuth);
-$("authOverlay").addEventListener("click", (event) => {
-  if (event.target === $("authOverlay")) closeAuth();
+
+// ========================================
+// 로그인 / 회원가입 버튼
+// ========================================
+
+$("loginOpenBtn").addEventListener("click", () => {
+  openAuth("login");
 });
-$("startBtn").addEventListener("click", () => startGame());
-$("downloadBtn").addEventListener("click", () => downloadGame());
+
+$("showLoginTab").addEventListener("click", () => {
+  authMode = "login";
+
+  updateAuthMode();
+  setAuthMessage();
+});
+
+$("showSignupTab").addEventListener("click", () => {
+  authMode = "signup";
+
+  updateAuthMode();
+  setAuthMessage();
+});
+
+$("authCloseBtn").addEventListener("click", closeAuth);
+
+$("authOverlay").addEventListener("click", (event) => {
+  if (event.target === $("authOverlay")) {
+    closeAuth();
+  }
+});
+
+
+// ========================================
+// 메인 버튼 연결
+// ========================================
+
+$("startBtn").addEventListener("click", startGame);
+
+$("downloadBtn").addEventListener("click", downloadGame);
+
+$("launcherDownloadBtn").addEventListener(
+  "click",
+  downloadLauncher
+);
+
+$("helpDownloadBtn").addEventListener(
+  "click",
+  downloadLauncher
+);
+
 $("infoBtn").addEventListener("click", showInfo);
 
+
+// ========================================
+// 로그아웃
+// ========================================
+
 $("logoutBtn").addEventListener("click", async () => {
-  if (supabase) await supabase.auth.signOut();
+  const { error } = await supabase.auth.signOut();
+
+  if (error) {
+    alert("로그아웃에 실패했습니다.");
+    return;
+  }
+
   showSignedOutUser();
+
   alert("로그아웃되었습니다.");
 });
 
+
+// ========================================
+// 로그인 및 회원가입 처리
+// ========================================
+
 $("authForm").addEventListener("submit", async (event) => {
   event.preventDefault();
-  setAuthMessage();
 
-  if (!supabase) {
-    setAuthMessage("먼저 Supabase 프로젝트를 설정해야 로그인/회원가입이 실제로 작동합니다. 설정 방법은 README.md를 확인하세요.", "error");
-    return;
-  }
+  setAuthMessage();
 
   const email = $("emailInput").value.trim();
   const password = $("passwordInput").value;
   const displayName = $("usernameInput").value.trim();
+
   const submitButton = $("authSubmitBtn");
+
   submitButton.disabled = true;
 
   try {
+
+    // 회원가입
     if (authMode === "signup") {
+
       if (password.length < 8) {
-        setAuthMessage("비밀번호를 8자 이상 입력해 주세요.", "error");
+        setAuthMessage(
+          "비밀번호를 8자 이상 입력해 주세요.",
+          "error"
+        );
         return;
       }
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: { data: { display_name: displayName } }
-      });
+
+      if (!displayName) {
+        setAuthMessage(
+          "닉네임을 입력해 주세요.",
+          "error"
+        );
+        return;
+      }
+
+      const { data, error } =
+        await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            data: {
+              display_name: displayName
+            }
+          }
+        });
+
       if (error) throw error;
 
       if (data.session) {
         showSignedInUser(data.user);
-        setAuthMessage("회원가입이 완료되었습니다.", "success");
-        await runPendingAction();
+
+        setAuthMessage(
+          "회원가입이 완료되었습니다.",
+          "success"
+        );
+
+        await executePendingAction();
+
       } else {
-        setAuthMessage("가입 요청이 완료되었습니다. 이메일 인증을 마친 뒤 로그인해 주세요.", "success");
+        setAuthMessage(
+          "회원가입 요청이 완료되었습니다. 이메일 인증 후 로그인해 주세요.",
+          "success"
+        );
+
         authMode = "login";
         updateAuthMode();
       }
-    } else {
-      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) throw error;
-      showSignedInUser(data.user);
-      setAuthMessage("로그인 성공!", "success");
-      await runPendingAction();
+
     }
+
+    // 로그인
+    else {
+
+      const { data, error } =
+        await supabase.auth.signInWithPassword({
+          email,
+          password
+        });
+
+      if (error) throw error;
+
+      showSignedInUser(data.user);
+
+      setAuthMessage(
+        "로그인 성공!",
+        "success"
+      );
+
+      await executePendingAction();
+    }
+
   } catch (error) {
-    setAuthMessage(error?.message || "인증 중 오류가 발생했습니다.", "error");
+
+    console.error(error);
+
+    setAuthMessage(
+      error?.message || "인증 중 오류가 발생했습니다.",
+      "error"
+    );
+
   } finally {
+
     submitButton.disabled = false;
+
   }
 });
 
-if (supabase) {
-  supabase.auth.onAuthStateChange((_event, session) => {
-    if (session?.user) showSignedInUser(session.user);
-    else showSignedOutUser();
-  });
+
+// ========================================
+// 로그인 후 대기 중인 작업 실행
+// ========================================
+
+async function executePendingAction() {
+  const action = pendingAction;
+
+  pendingAction = null;
+
+  $("authOverlay").classList.add("hidden");
+
+  if (action === "start") {
+    await startGame();
+  }
+
+  if (action === "download") {
+    await downloadGame();
+  }
+
+  if (action === "launcher") {
+    await downloadLauncher();
+  }
 }
+
+
+// ========================================
+// 인증 상태 변화 감지
+// ========================================
+
+supabase.auth.onAuthStateChange((_event, session) => {
+  if (session?.user) {
+    showSignedInUser(session.user);
+  } else {
+    showSignedOutUser();
+  }
+});
+
+
+// ========================================
+// 처음 페이지 접속 시
+// ========================================
+
 refreshSession();
 updateAuthMode();
