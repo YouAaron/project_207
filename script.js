@@ -228,7 +228,7 @@ async function downloadLauncher() {
 
   if (
     !LAUNCHER_DOWNLOAD_URL ||
-    LAUNCHER_DOWNLOAD_URL.includes("LAUNCHER_DOWNLOAD_URL")
+    LAUNCHER_DOWNLOAD_URL.includes("PASTE_YOUR")
   ) {
     alert(
       "아직 런처 다운로드 주소가 설정되지 않았습니다.\n\n" +
