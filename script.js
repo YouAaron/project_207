@@ -29,7 +29,7 @@ const GAME_DOWNLOAD_URL =
 
 // 런처 EXE를 배포한 GitHub Release 주소로 교체해야 함
 const LAUNCHER_DOWNLOAD_URL =
-  "PASTE_YOUR_LAUNCHER_DOWNLOAD_URL_HERE";
+  "https://github.com/YouAaron/project_207_launcher/releases/download/1.0V/FPSLauncher.zip";
 
 
 // ========================================
@@ -228,7 +228,7 @@ async function downloadLauncher() {
 
   if (
     !LAUNCHER_DOWNLOAD_URL ||
-    LAUNCHER_DOWNLOAD_URL.includes("https://github.com/YouAaron/project_207_launcher/releases/download/1.0V/FPSLauncher.zip")
+    LAUNCHER_DOWNLOAD_URL.includes("LAUNCHER_DOWNLOAD_URL")
   ) {
     alert(
       "아직 런처 다운로드 주소가 설정되지 않았습니다.\n\n" +
