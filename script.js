@@ -167,8 +167,6 @@ async function startGame() {
   if (!loggedIn) return;
 
   $("launchStatus").classList.remove("hidden");
-  $("launcherHelp").classList.add("hidden");
-
   $("launchStatus").textContent =
     "런처 실행을 요청하고 있습니다...";
 
@@ -183,8 +181,6 @@ async function startGame() {
   launchTimer = setTimeout(() => {
     $("launchStatus").textContent =
       "런처가 실행되지 않았을 수 있습니다.";
-
-    $("launcherHelp").classList.remove("hidden");
   }, 2000);
 }
 
@@ -299,11 +295,6 @@ $("startBtn").addEventListener("click", startGame);
 $("downloadBtn").addEventListener("click", downloadGame);
 
 $("launcherDownloadBtn").addEventListener(
-  "click",
-  downloadLauncher
-);
-
-$("helpDownloadBtn").addEventListener(
   "click",
   downloadLauncher
 );
