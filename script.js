@@ -2,7 +2,6 @@
 import { createClient } from
   "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
 
-
 // ========================================
 // SUPABASE 설정
 // ========================================
@@ -18,19 +17,15 @@ const supabase = createClient(
   SUPABASE_ANON_KEY
 );
 
-
 // ========================================
-// 다운로드 주소 설정
+// 다운로드 주소
 // ========================================
 
-// 실제 게임 ZIP 파일의 GitHub Release 주소
 const GAME_DOWNLOAD_URL =
   "https://github.com/YouAaron/project_207_game/releases/download/v1.0/FPSGAME207.zip";
 
-// 런처 EXE를 배포한 GitHub Release 주소로 교체해야 함
 const LAUNCHER_DOWNLOAD_URL =
   "https://github.com/YouAaron/project_207_launcher/releases/download/1.0V/FPSLauncher.zip";
-
 
 // ========================================
 // 기본 설정
@@ -42,6 +37,8 @@ let authMode = "login";
 let pendingAction = null;
 let launchTimer = null;
 
+// 로그인 상태 변경 횟수
+let authStateRevision = 0;
 
 // ========================================
 // 로그인 창
@@ -49,7 +46,6 @@ let launchTimer = null;
 
 function setAuthMessage(message = "", type = "") {
   const element = $("authMessage");
-
   element.textContent = message;
   element.className = `auth-message ${type}`.trim();
 }
@@ -102,16 +98,17 @@ function updateAuthMode() {
       : "가입할 때 사용한 비밀번호를 입력하세요.";
 }
 
-
 // ========================================
-// 로그인 상태 표시
+// 로그인 상태 화면 표시
 // ========================================
 
 function showSignedInUser(user) {
-  const email = user?.email ?? "";
+  if (!user) return;
+
+  const email = user.email ?? "";
 
   const displayName =
-    user?.user_metadata?.display_name || email;
+    user.user_metadata?.display_name || email;
 
   $("userBadge").textContent =
     `로그인: ${displayName}`;
@@ -133,7 +130,6 @@ function showSignedOutUser() {
 
   $("loginNotice").classList.remove("hidden");
 }
-
 
 // ========================================
 // 로그인 확인
@@ -161,7 +157,6 @@ async function requireLogin(action) {
   return true;
 }
 
-
 // ========================================
 // 게임 실행
 // ========================================
@@ -177,14 +172,12 @@ async function startGame() {
   $("launchStatus").textContent =
     "런처 실행을 요청하고 있습니다...";
 
-  // Windows 런처 사용자 지정 프로토콜 호출
   try {
     window.location.href = "fpsgame://start";
   } catch (error) {
     console.error(error);
   }
 
-  // 런처가 설치되지 않았거나 실행되지 않는 경우 안내
   clearTimeout(launchTimer);
 
   launchTimer = setTimeout(() => {
@@ -194,7 +187,6 @@ async function startGame() {
     $("launcherHelp").classList.remove("hidden");
   }, 2000);
 }
-
 
 // ========================================
 // 게임 다운로드
@@ -216,7 +208,6 @@ async function downloadGame() {
   window.location.href = GAME_DOWNLOAD_URL;
 }
 
-
 // ========================================
 // 런처 다운로드
 // ========================================
@@ -230,18 +221,12 @@ async function downloadLauncher() {
     !LAUNCHER_DOWNLOAD_URL ||
     LAUNCHER_DOWNLOAD_URL.includes("PASTE_YOUR")
   ) {
-    alert(
-      "아직 런처 다운로드 주소가 설정되지 않았습니다.\n\n" +
-      "런처 EXE를 GitHub Releases에 업로드한 뒤\n" +
-      "script.js의 LAUNCHER_DOWNLOAD_URL을 변경해 주세요."
-    );
-
+    alert("런처 다운로드 주소를 설정해 주세요.");
     return;
   }
 
   window.location.href = LAUNCHER_DOWNLOAD_URL;
 }
-
 
 // ========================================
 // 게임 정보
@@ -251,16 +236,24 @@ function showInfo() {
   $("information").classList.toggle("hidden");
 }
 
-
 // ========================================
 // 로그인 상태 복구
 // ========================================
 
 async function refreshSession() {
+  // 확인을 시작할 때의 로그인 상태 변경 횟수 저장
+  const revisionAtStart = authStateRevision;
+
   const {
     data: { session },
     error
   } = await supabase.auth.getSession();
+
+  // 확인하는 동안 로그인 상태가 변경되었다면
+  // 오래된 결과로 화면을 덮어쓰지 않음
+  if (revisionAtStart !== authStateRevision) {
+    return;
+  }
 
   if (error || !session) {
     showSignedOutUser();
@@ -269,7 +262,6 @@ async function refreshSession() {
 
   showSignedInUser(session.user);
 }
-
 
 // ========================================
 // 로그인 / 회원가입 버튼
@@ -281,14 +273,12 @@ $("loginOpenBtn").addEventListener("click", () => {
 
 $("showLoginTab").addEventListener("click", () => {
   authMode = "login";
-
   updateAuthMode();
   setAuthMessage();
 });
 
 $("showSignupTab").addEventListener("click", () => {
   authMode = "signup";
-
   updateAuthMode();
   setAuthMessage();
 });
@@ -301,13 +291,11 @@ $("authOverlay").addEventListener("click", (event) => {
   }
 });
 
-
 // ========================================
 // 메인 버튼 연결
 // ========================================
 
 $("startBtn").addEventListener("click", startGame);
-
 $("downloadBtn").addEventListener("click", downloadGame);
 
 $("launcherDownloadBtn").addEventListener(
@@ -322,7 +310,6 @@ $("helpDownloadBtn").addEventListener(
 
 $("infoBtn").addEventListener("click", showInfo);
 
-
 // ========================================
 // 로그아웃
 // ========================================
@@ -336,10 +323,8 @@ $("logoutBtn").addEventListener("click", async () => {
   }
 
   showSignedOutUser();
-
   alert("로그아웃되었습니다.");
 });
-
 
 // ========================================
 // 로그인 및 회원가입 처리
@@ -359,10 +344,8 @@ $("authForm").addEventListener("submit", async (event) => {
   submitButton.disabled = true;
 
   try {
-
     // 회원가입
     if (authMode === "signup") {
-
       if (password.length < 8) {
         setAuthMessage(
           "비밀번호를 8자 이상 입력해 주세요.",
@@ -393,6 +376,7 @@ $("authForm").addEventListener("submit", async (event) => {
       if (error) throw error;
 
       if (data.session) {
+        authStateRevision++;
         showSignedInUser(data.user);
 
         setAuthMessage(
@@ -411,12 +395,10 @@ $("authForm").addEventListener("submit", async (event) => {
         authMode = "login";
         updateAuthMode();
       }
-
     }
 
     // 로그인
     else {
-
       const { data, error } =
         await supabase.auth.signInWithPassword({
           email,
@@ -424,6 +406,9 @@ $("authForm").addEventListener("submit", async (event) => {
         });
 
       if (error) throw error;
+
+      // 로그인 성공 즉시 화면 갱신
+      authStateRevision++;
 
       showSignedInUser(data.user);
 
@@ -436,8 +421,7 @@ $("authForm").addEventListener("submit", async (event) => {
     }
 
   } catch (error) {
-
-    console.error(error);
+    console.error("인증 오류:", error);
 
     setAuthMessage(
       error?.message || "인증 중 오류가 발생했습니다.",
@@ -445,12 +429,9 @@ $("authForm").addEventListener("submit", async (event) => {
     );
 
   } finally {
-
     submitButton.disabled = false;
-
   }
 });
-
 
 // ========================================
 // 로그인 후 대기 중인 작업 실행
@@ -476,12 +457,14 @@ async function executePendingAction() {
   }
 }
 
-
 // ========================================
 // 인증 상태 변화 감지
 // ========================================
 
+// 초기 세션 확인보다 먼저 등록
 supabase.auth.onAuthStateChange((_event, session) => {
+  authStateRevision++;
+
   if (session?.user) {
     showSignedInUser(session.user);
   } else {
@@ -489,10 +472,9 @@ supabase.auth.onAuthStateChange((_event, session) => {
   }
 });
 
-
 // ========================================
 // 처음 페이지 접속 시
 // ========================================
 
-refreshSession();
 updateAuthMode();
+refreshSession();
